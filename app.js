@@ -1435,40 +1435,13 @@ function sendWeeklyReportToGas(report) {
 
   return fetch(WEEKLY_REPORT_GAS_URL, {
     method: "POST",
+    mode: "no-cors",
     headers: {
       "Content-Type": "text/plain;charset=utf-8",
     },
     body: JSON.stringify(payload),
   })
-    .then(async (response) => {
-      const responseText = await response.text();
-      let responseJson = null;
-
-      try {
-        responseJson = responseText ? JSON.parse(responseText) : null;
-      } catch (error) {
-        console.warn("週間レポートGASレスポンスをJSONとして読めませんでした", {
-          url: WEEKLY_REPORT_GAS_URL,
-          status: response.status,
-          responseText,
-          error,
-        });
-      }
-
-      if (!response.ok || !responseJson?.success) {
-        console.warn("週間レポートGAS送信エラー詳細", {
-          url: WEEKLY_REPORT_GAS_URL,
-          status: response.status,
-          ok: response.ok,
-          payload,
-          response: responseJson,
-          responseText,
-        });
-        throw new Error(responseJson?.error || `週間レポート送信に失敗しました: ${response.status}`);
-      }
-
-      return responseJson;
-    })
+    .then(() => true)
     .catch((error) => {
       console.warn("週間レポートfetchに失敗しました", {
         url: WEEKLY_REPORT_GAS_URL,
