@@ -32,6 +32,7 @@ const DEFAULT_LOGIN_BONUS_SETTINGS = {
   streakGold: 20,
 };
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+const EVERYDAY_SCHEDULE_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const STAT_KEYS = ["STR", "INT", "END", "DEX"];
 const RECENT_STAT_HISTORY_LIMIT = 10;
 const RECENT_STAT_BONUS = 5;
@@ -1141,6 +1142,16 @@ function normalizeScheduleDays(rawDays) {
     .sort((a, b) => a - b);
 }
 
+function normalizeQuestScheduleDays(rawDays) {
+  const days = normalizeScheduleDays(rawDays);
+  return days.length > 0 ? days : [...EVERYDAY_SCHEDULE_DAYS];
+}
+
+function isEverydaySchedule(scheduleDays) {
+  const days = normalizeQuestScheduleDays(scheduleDays);
+  return EVERYDAY_SCHEDULE_DAYS.every((day) => days.includes(day));
+}
+
 function normalizeQuest(rawQuest) {
   const rawXpReward = rawQuest.xpReward;
   const rawGoldReward = rawQuest.goldReward;
@@ -1152,7 +1163,7 @@ function normalizeQuest(rawQuest) {
   const priority = ["high", "medium", "low"].includes(rawQuest.priority) ? rawQuest.priority : "medium";
   const frequency = ["once", "daily", "weekly", "weekday"].includes(rawQuest.frequency) ? rawQuest.frequency : "daily";
   const stat = ["STR", "INT", "END", "DEX"].includes(rawQuest.stat) ? rawQuest.stat : inferQuestStat(rawQuest);
-  const scheduleDays = normalizeScheduleDays(rawQuest.scheduleDays);
+  const scheduleDays = normalizeQuestScheduleDays(rawQuest.scheduleDays);
 
   if (!title || !Number.isFinite(xpReward) || !Number.isFinite(goldReward)) {
     return null;
@@ -1503,11 +1514,11 @@ function isQuestCompleted(quest) {
 }
 
 function isQuestVisible(quest) {
+  if (!normalizeQuestScheduleDays(quest.scheduleDays).includes(getJapanDayOfWeek())) {
+    return false;
+  }
   if (quest.frequency === "once") {
     return !isQuestCompleted(quest);
-  }
-  if (quest.frequency === "weekday") {
-    return normalizeScheduleDays(quest.scheduleDays).includes(getJapanDayOfWeek());
   }
   return true;
 }
@@ -1583,24 +1594,25 @@ function getQuestTypeLabel(type) {
 }
 
 function getScheduleDaysLabel(scheduleDays) {
-  const days = normalizeScheduleDays(scheduleDays);
-  if (days.length === 0) {
-    return "曜日指定";
+  const days = normalizeQuestScheduleDays(scheduleDays);
+  if (isEverydaySchedule(days)) {
+    return "毎日";
   }
   return days.map((day) => WEEKDAY_LABELS[day]).join("・");
 }
 
 function getQuestFrequencyLabel(frequency, scheduleDays = []) {
+  const scheduleLabel = getScheduleDaysLabel(scheduleDays);
   if (frequency === "once") {
-    return "単発";
+    return scheduleLabel === "毎日" ? "単発" : `単発 / ${scheduleLabel}`;
   }
   if (frequency === "weekly") {
-    return "毎週";
+    return scheduleLabel === "毎日" ? "毎週" : `毎週 / ${scheduleLabel}`;
   }
   if (frequency === "weekday") {
-    return getScheduleDaysLabel(scheduleDays);
+    return scheduleLabel;
   }
-  return "毎日";
+  return scheduleLabel;
 }
 
 function getQuestPriorityLabel(priority) {
@@ -3529,13 +3541,14 @@ function handleQuestCreateSubmit(event) {
   const form = event.currentTarget;
   const message = form.querySelector("[data-quest-create-message]");
   const formData = new FormData(form);
+  const scheduleDays = formData.getAll("scheduleDays");
   const quest = normalizeQuest({
     id: `parent-${Date.now()}`,
     type: formData.get("type"),
     category: formData.get("category"),
     priority: formData.get("priority"),
     frequency: formData.get("frequency"),
-    scheduleDays: formData.getAll("scheduleDays"),
+    scheduleDays,
     stat: formData.get("stat"),
     title: formData.get("title"),
     description: formData.get("description"),
@@ -3550,7 +3563,7 @@ function handleQuestCreateSubmit(event) {
     return;
   }
 
-  if (quest.frequency === "weekday" && quest.scheduleDays.length === 0) {
+  if (normalizeScheduleDays(scheduleDays).length === 0) {
     if (message) {
       message.textContent = "曜日を1つ以上選んでください";
     }
@@ -3599,8 +3612,8 @@ function clearParentNote() {
   }
 }
 
-function renderWeekdayPicker(selectedDays = [], hidden = true) {
-  const normalizedDays = normalizeScheduleDays(selectedDays);
+function renderWeekdayPicker(selectedDays = [], hidden = false) {
+  const normalizedDays = normalizeQuestScheduleDays(selectedDays);
   return `
     <fieldset class="weekday-picker" data-weekday-picker${hidden ? " hidden" : ""}>
       <legend>表示する曜日</legend>
@@ -3620,12 +3633,11 @@ function renderWeekdayPicker(selectedDays = [], hidden = true) {
 
 function updateWeekdayPicker(form) {
   const picker = form?.querySelector("[data-weekday-picker]");
-  const frequency = form?.querySelector('[name="frequency"]')?.value;
   if (!picker) {
     return;
   }
 
-  picker.hidden = frequency !== "weekday";
+  picker.hidden = false;
 }
 
 function renderQuestCreateForm() {
@@ -3710,7 +3722,7 @@ function renderQuestManager() {
               <option value="once"${quest.frequency === "once" ? " selected" : ""}>単発</option>
             </select>
           </label>
-          ${renderWeekdayPicker(quest.scheduleDays, quest.frequency !== "weekday")}
+          ${renderWeekdayPicker(quest.scheduleDays)}
           <label>
             成長する能力
             <select name="stat">
@@ -3792,13 +3804,14 @@ function handleQuestEditSubmit(event) {
 
   const questId = form.dataset.editQuestForm;
   const formData = new FormData(form);
+  const scheduleDays = formData.getAll("scheduleDays");
   const quest = normalizeQuest({
     id: questId,
     type: formData.get("type"),
     category: formData.get("category"),
     priority: formData.get("priority"),
     frequency: formData.get("frequency"),
-    scheduleDays: formData.getAll("scheduleDays"),
+    scheduleDays,
     stat: formData.get("stat"),
     title: formData.get("title"),
     description: formData.get("description"),
@@ -3814,7 +3827,7 @@ function handleQuestEditSubmit(event) {
     return;
   }
 
-  if (quest.frequency === "weekday" && quest.scheduleDays.length === 0) {
+  if (normalizeScheduleDays(scheduleDays).length === 0) {
     if (message) {
       message.textContent = "曜日を1つ以上選んでください";
     }
