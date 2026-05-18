@@ -5227,6 +5227,19 @@ function playBossDamageAnimation(isDefeated = false) {
   window.setTimeout(() => card.classList.remove("is-hit", "is-defeated"), isDefeated ? 1180 : 620);
 }
 
+function showBossDamagePop(damage) {
+  const damagePop = document.querySelector("[data-boss-damage-pop]");
+  if (!damagePop) {
+    return;
+  }
+
+  damagePop.textContent = `-${damage} ダメージ`;
+  damagePop.classList.remove("is-visible");
+  void damagePop.offsetWidth;
+  damagePop.classList.add("is-visible");
+  window.setTimeout(() => damagePop.classList.remove("is-visible"), 1100);
+}
+
 function showBossBattleFeedback(result) {
   if (!result?.damaged) {
     return;
@@ -5241,6 +5254,8 @@ function showBossBattleFeedback(result) {
   playBossDamageAnimation(result.defeated);
   if (result.defeated) {
     window.setTimeout(() => playSound("achievement"), ACHIEVEMENT_SOUND_DELAY);
+  } else {
+    showBossDamagePop(result.damage);
   }
   enqueueToast(toast, {
     message,

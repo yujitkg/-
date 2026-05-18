@@ -1421,6 +1421,35 @@ h3 {
   font-weight: 950;
 }
 
+.boss-damage-pop {
+  position: absolute;
+  top: 16%;
+  right: 5%;
+  z-index: 2;
+  min-width: 6.8em;
+  border: 1px solid rgba(255, 232, 143, 0.78);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #fff8e6;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 223, 0.16), transparent 42%),
+    linear-gradient(180deg, #a93a36, #7b2830);
+  box-shadow:
+    0 10px 18px rgba(48, 29, 20, 0.26),
+    0 0 18px rgba(196, 73, 62, 0.34);
+  font-size: 0.74rem;
+  font-weight: 950;
+  line-height: 1.1;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transform: translateY(8px) scale(0.9);
+}
+
+.boss-damage-pop.is-visible {
+  animation: bossDamagePop 1050ms ease both;
+}
+
 .boss-image-frame [hidden] {
   display: none;
 }
@@ -1489,7 +1518,7 @@ h3 {
   box-shadow:
     0 0 14px rgba(196, 73, 62, 0.34),
     inset 0 1px 0 rgba(255, 247, 223, 0.42);
-  transition: width 460ms ease;
+  transition: width 680ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .boss-meta {
@@ -1522,7 +1551,7 @@ h3 {
 }
 
 .boss-card.is-hit .boss-image-frame {
-  animation: bossDamageShake 420ms ease both;
+  animation: bossDamageShake 520ms ease both;
 }
 
 @keyframes bossFloat {
@@ -1552,6 +1581,24 @@ h3 {
 
   70% {
     transform: translateX(-2px);
+  }
+}
+
+@keyframes bossDamagePop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+
+  18%,
+  62% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.04);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.98);
   }
 }
 
