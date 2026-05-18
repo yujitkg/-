@@ -591,6 +591,26 @@
             <p class="form-message" data-login-bonus-settings-message aria-live="polite"></p>
             <button type="submit">設定を保存</button>
           </form>
+          <form class="future-form daily-clear-bonus-settings-form" data-daily-clear-bonus-settings-form aria-label="今日の冒険クリア設定フォーム">
+            <h3>今日の冒険クリア設定</h3>
+            <p>今日表示されている毎日クエストをすべて達成したときのクリアボーナスです。</p>
+            <label class="setting-check">
+              <input type="checkbox" name="enabled">
+              <span>クリアボーナスON</span>
+            </label>
+            <div class="reward-input-grid">
+              <label>
+                クリアボーナス XP
+                <input type="number" name="xp" inputmode="numeric" min="0" max="999" placeholder="0" required>
+              </label>
+              <label>
+                クリアボーナス Gold
+                <input type="number" name="gold" inputmode="numeric" min="0" max="999" placeholder="10" required>
+              </label>
+            </div>
+            <p class="form-message" data-daily-clear-bonus-settings-message aria-live="polite"></p>
+            <button type="submit">設定を保存</button>
+          </form>
           </section>
           <section class="future-form weekly-report-admin-panel" data-parent-mode-only aria-labelledby="weekly-report-admin-title" hidden>
             <h3 id="weekly-report-admin-title">週間レポート送信</h3>
@@ -684,6 +704,7 @@
       <div class="login-bonus-toast" data-login-bonus-toast aria-live="polite"></div>
       <div class="achievement-toast" data-achievement-toast aria-live="polite"></div>
       <div class="clear-toast" data-clear-toast aria-live="polite"></div>
+      <div class="daily-clear-toast" data-daily-clear-toast aria-live="polite"></div>
       <div class="level-up-toast" data-level-up-toast aria-live="polite">レベルアップ！</div>
       <div class="evolution-toast" data-evolution-toast aria-live="polite"></div>
       <div class="evolution-modal" data-evolution-modal aria-live="polite" hidden>

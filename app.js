@@ -8,6 +8,8 @@ const WEEKLY_REPORT_HISTORY_KEY = "sora_guild_app_weekly_report_history_dev";
 const PARENT_NOTES_KEY = "sora_guild_app_parent_notes_dev";
 const ONBOARDING_KEY = "hasSeenOnboarding";
 const LOGIN_BONUS_SETTINGS_KEY = "sora_guild_app_login_bonus_settings_dev";
+const DAILY_CLEAR_BONUS_SETTINGS_KEY = "sora_guild_app_daily_clear_bonus_settings_dev";
+const DAILY_CLEAR_BONUS_DATE_KEY = "sora_guild_app_daily_clear_bonus_date_dev";
 const BGM_ENABLED_KEY = "sora_guild_app_bgm_enabled_dev";
 const BGM_SRC = "./assets/audio/bgm/bgm_main.mp3";
 const BGM_VOLUME = 0.3;
@@ -30,6 +32,11 @@ const DEFAULT_LOGIN_BONUS_SETTINGS = {
   streakIntervalDays: 7,
   streakXp: 20,
   streakGold: 20,
+};
+const DEFAULT_DAILY_CLEAR_BONUS_SETTINGS = {
+  enabled: true,
+  xp: 0,
+  gold: 10,
 };
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 const EVERYDAY_SCHEDULE_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -77,6 +84,8 @@ const BACKUP_STORAGE_KEYS = [
   PARENT_NOTES_KEY,
   ONBOARDING_KEY,
   LOGIN_BONUS_SETTINGS_KEY,
+  DAILY_CLEAR_BONUS_SETTINGS_KEY,
+  DAILY_CLEAR_BONUS_DATE_KEY,
   BGM_ENABLED_KEY,
   SFX_ENABLED_KEY,
   CHARACTER_STAGE_KEY,
@@ -371,6 +380,7 @@ let rewardHistory = loadRewardHistory();
 let unlockedAchievements = loadAchievements();
 let weeklyReportHistory = loadWeeklyReportHistory();
 let loginBonusSettings = loadLoginBonusSettings();
+let dailyClearBonusSettings = loadDailyClearBonusSettings();
 progress = reconcileProgressFromHistory(progress);
 let rewardToastTimer;
 let clearToastTimer;
@@ -577,6 +587,28 @@ function loadLoginBonusSettings() {
 
 function saveLoginBonusSettings() {
   localStorage.setItem(LOGIN_BONUS_SETTINGS_KEY, JSON.stringify(loginBonusSettings));
+}
+
+function normalizeDailyClearBonusSettings(rawSettings = {}) {
+  return {
+    ...DEFAULT_DAILY_CLEAR_BONUS_SETTINGS,
+    enabled: typeof rawSettings.enabled === "boolean" ? rawSettings.enabled : DEFAULT_DAILY_CLEAR_BONUS_SETTINGS.enabled,
+    xp: normalizeNonNegativeNumber(rawSettings.xp, DEFAULT_DAILY_CLEAR_BONUS_SETTINGS.xp),
+    gold: normalizeNonNegativeNumber(rawSettings.gold, DEFAULT_DAILY_CLEAR_BONUS_SETTINGS.gold),
+  };
+}
+
+function loadDailyClearBonusSettings() {
+  try {
+    const stored = localStorage.getItem(DAILY_CLEAR_BONUS_SETTINGS_KEY);
+    return normalizeDailyClearBonusSettings(stored ? JSON.parse(stored) : {});
+  } catch {
+    return normalizeDailyClearBonusSettings();
+  }
+}
+
+function saveDailyClearBonusSettings() {
+  localStorage.setItem(DAILY_CLEAR_BONUS_SETTINGS_KEY, JSON.stringify(dailyClearBonusSettings));
 }
 
 function loadAchievements() {
@@ -1558,6 +1590,47 @@ function getDailyRequiredQuestSummary() {
     remainingCount: Math.max(0, totalCount - completedCount),
     progressPercent: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
     isComplete: totalCount > 0 && completedCount === totalCount,
+  };
+}
+
+function formatBonusRewardText(xp, gold) {
+  return [
+    xp > 0 ? `XP +${xp}` : "",
+    gold > 0 ? `Gold +${gold}` : "",
+  ].filter(Boolean).join(" / ");
+}
+
+function applyDailyAdventureClearBonus(completedAt = new Date()) {
+  const summary = getDailyRequiredQuestSummary();
+  const today = getDateKey(completedAt);
+  if (!summary.isComplete || localStorage.getItem(DAILY_CLEAR_BONUS_DATE_KEY) === today) {
+    return {
+      cleared: false,
+      xp: 0,
+      gold: 0,
+    };
+  }
+
+  const settings = normalizeDailyClearBonusSettings(dailyClearBonusSettings);
+  const bonusXp = settings.enabled ? settings.xp : 0;
+  const bonusGold = settings.enabled ? settings.gold : 0;
+  const previousLevel = getLevel(progress.xp);
+  const nextXp = progress.xp + bonusXp;
+  const nextLevel = getLevel(nextXp);
+  localStorage.setItem(DAILY_CLEAR_BONUS_DATE_KEY, today);
+
+  progress = {
+    ...progress,
+    xp: nextXp,
+    gold: progress.gold + bonusGold,
+    totalGoldEarned: Math.max(0, progress.totalGoldEarned || progress.gold || 0) + bonusGold,
+    titleHistory: updateTitleHistory(progress.titleHistory, previousLevel, nextLevel, completedAt.toISOString()),
+  };
+
+  return {
+    cleared: true,
+    xp: bonusXp,
+    gold: bonusGold,
   };
 }
 
@@ -2882,7 +2955,9 @@ function completeQuest(questId, sourceElement) {
     titleHistory: updateTitleHistory(progress.titleHistory, previousLevel, nextLevel, completedAtIso),
   };
 
-  const shouldPlayEvolution = nextLevel > previousLevel && syncCharacterStageState(nextLevel, { allowEvolution: true });
+  const dailyAdventureClearResult = applyDailyAdventureClearBonus(completedAt);
+  const finalLevel = getLevel(progress.xp);
+  const shouldPlayEvolution = finalLevel > previousLevel && syncCharacterStageState(finalLevel, { allowEvolution: true });
   if (shouldPlayEvolution) {
     queueCharacterEvolution();
   }
@@ -2897,6 +2972,9 @@ function completeQuest(questId, sourceElement) {
   showFloatingReward(quest, sourceRect);
   checkAchievements();
   showClearFeedback();
+  if (dailyAdventureClearResult.cleared) {
+    showDailyAdventureClearFeedback(dailyAdventureClearResult);
+  }
 
   if (getLevel(progress.xp) > previousLevel) {
     playLevelUpAnimation();
@@ -3392,6 +3470,44 @@ function handleLoginBonusSettingsSubmit(event) {
   saveLoginBonusSettings();
   renderLoginBonusSettingsForm();
   setLoginBonusSettingsMessage("ログインボーナス設定を保存しました");
+}
+
+function setDailyClearBonusSettingsMessage(message, isError = false) {
+  const element = document.querySelector("[data-daily-clear-bonus-settings-message]");
+  if (!element) {
+    return;
+  }
+
+  element.textContent = message;
+  element.classList.toggle("is-error", isError);
+}
+
+function renderDailyClearBonusSettingsForm() {
+  const form = document.querySelector("[data-daily-clear-bonus-settings-form]");
+  if (!form) {
+    return;
+  }
+
+  const settings = normalizeDailyClearBonusSettings(dailyClearBonusSettings);
+  form.elements.enabled.checked = settings.enabled;
+  form.elements.xp.value = settings.xp;
+  form.elements.gold.value = settings.gold;
+}
+
+function handleDailyClearBonusSettingsSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+
+  dailyClearBonusSettings = normalizeDailyClearBonusSettings({
+    enabled: formData.get("enabled") === "on",
+    xp: formData.get("xp"),
+    gold: formData.get("gold"),
+  });
+
+  saveDailyClearBonusSettings();
+  renderDailyClearBonusSettingsForm();
+  setDailyClearBonusSettingsMessage("今日の冒険クリア設定を保存しました");
 }
 
 function devLevelUp() {
@@ -4736,6 +4852,7 @@ function getToastTimerName(timerName) {
     appReminder: "appReminderTimer",
     achievement: "achievementToastTimer",
     clear: "clearToastTimer",
+    dailyClear: "dailyClearToastTimer",
     levelUp: "levelUpTimer",
     evolution: "evolutionTimer",
   }[timerName];
@@ -4838,13 +4955,6 @@ function playLoginBonusToast(message, duration = TOAST_DURATION) {
   });
 }
 
-function formatBonusRewardText(xp, gold) {
-  return [
-    xp > 0 ? `XP +${xp}` : "",
-    gold > 0 ? `Gold +${gold}` : "",
-  ].filter(Boolean).join(" / ");
-}
-
 function showAppReminderToast() {
   const toast = document.querySelector("[data-app-reminder-toast]");
   if (!toast || isParentMode) {
@@ -4927,6 +5037,20 @@ function showClearFeedback() {
   enqueueToast(toast, {
     message: messages[messageIndex],
     timerName: "clear",
+  });
+}
+
+function showDailyAdventureClearFeedback(result) {
+  const toast = document.querySelector("[data-daily-clear-toast]");
+  if (!toast) {
+    return;
+  }
+
+  const bonusText = formatBonusRewardText(result.xp || 0, result.gold || 0);
+  playSound(result.gold > 0 ? "gold" : "achievement");
+  enqueueToast(toast, {
+    message: bonusText ? `今日の冒険クリア！ クリアボーナス ${bonusText}` : "今日の冒険クリア！",
+    timerName: "dailyClear",
   });
 }
 
@@ -5282,6 +5406,7 @@ function render() {
   renderRewardManager();
   renderRewardHistory();
   renderLoginBonusSettingsForm();
+  renderDailyClearBonusSettingsForm();
 }
 
 document.querySelector("[data-character-image]")?.addEventListener("load", (event) => {
@@ -5591,6 +5716,7 @@ document.querySelector("[data-screen='quests']")?.addEventListener(
 document.querySelector("[data-parent-auth-form]")?.addEventListener("submit", handleParentAuthSubmit);
 document.querySelector("[data-pin-change-form]")?.addEventListener("submit", handlePinChangeSubmit);
 document.querySelector("[data-login-bonus-settings-form]")?.addEventListener("submit", handleLoginBonusSettingsSubmit);
+document.querySelector("[data-daily-clear-bonus-settings-form]")?.addEventListener("submit", handleDailyClearBonusSettingsSubmit);
 document.querySelector("[data-quest-create-form]")?.addEventListener("submit", handleQuestCreateSubmit);
 document.querySelector("[data-reward-create-form]")?.addEventListener("submit", handleRewardCreateSubmit);
 document.querySelector("[data-parent-note-form]")?.addEventListener("submit", handleParentNoteSubmit);

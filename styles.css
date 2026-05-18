@@ -3205,6 +3205,7 @@ h3 {
 
 .level-up-toast,
 .clear-toast,
+.daily-clear-toast,
 .evolution-toast,
 .reward-toast,
 .app-reminder-toast,
@@ -3239,9 +3240,23 @@ h3 {
 
 .level-up-toast,
 .clear-toast,
+.daily-clear-toast,
 .evolution-toast {
   padding: 12px 18px;
   font-size: 1rem;
+}
+
+.daily-clear-toast {
+  border-color: rgba(255, 232, 143, 0.82);
+  color: var(--wood-dark);
+  background:
+    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.72), transparent 0.42rem),
+    radial-gradient(circle at 82% 30%, rgba(255, 255, 255, 0.58), transparent 0.34rem),
+    linear-gradient(180deg, rgba(255, 247, 223, 0.32), transparent 42%),
+    linear-gradient(180deg, #ffeaa3, #d8a83c 58%, #b97c28);
+  box-shadow:
+    0 12px 28px rgba(48, 29, 20, 0.3),
+    0 0 26px rgba(241, 210, 122, 0.54);
 }
 
 .reward-toast.is-challenge {
@@ -3256,6 +3271,7 @@ h3 {
 
 .level-up-toast.is-visible,
 .clear-toast.is-visible,
+.daily-clear-toast.is-visible,
 .evolution-toast.is-visible,
 .reward-toast.is-visible,
 .app-reminder-toast.is-visible,
