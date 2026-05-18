@@ -5240,6 +5240,45 @@ function showBossDamagePop(damage) {
   window.setTimeout(() => damagePop.classList.remove("is-visible"), 1100);
 }
 
+function showBossDefeatRewardPanel(result) {
+  const panel = document.querySelector("[data-boss-reward-panel]");
+  if (!panel) {
+    return;
+  }
+
+  setText("[data-boss-reward-xp]", `XP +${result.rewardXp || 0}`);
+  setText("[data-boss-reward-gold]", `Gold +${result.rewardGold || 0}`);
+  panel.hidden = false;
+  panel.classList.remove("is-visible");
+  void panel.offsetWidth;
+  panel.classList.add("is-visible");
+  window.clearTimeout(toastTimers.bossRewardPanelTimer);
+  toastTimers.bossRewardPanelTimer = window.setTimeout(() => {
+    panel.classList.remove("is-visible");
+    panel.hidden = true;
+  }, 2100);
+}
+
+function playBossSpawnAnimation(nextBoss) {
+  const card = document.querySelector("[data-boss-card]");
+  const toast = document.querySelector("[data-boss-toast]");
+  if (card) {
+    card.classList.remove("is-spawning");
+    void card.offsetWidth;
+    card.classList.add("is-spawning");
+    window.setTimeout(() => card.classList.remove("is-spawning"), 920);
+  }
+  if (nextBoss) {
+    enqueueToast(toast, {
+      message: `新たなボスが現れた！ ${nextBoss.name}`,
+      duration: 1500,
+      timerName: "boss",
+      beforeShow: (element) => element.classList.add("is-spawn"),
+      afterHide: (element) => element.classList.remove("is-spawn"),
+    });
+  }
+}
+
 function showBossBattleFeedback(result) {
   if (!result?.damaged) {
     return;
@@ -5253,7 +5292,9 @@ function showBossBattleFeedback(result) {
 
   playBossDamageAnimation(result.defeated);
   if (result.defeated) {
+    showBossDefeatRewardPanel(result);
     window.setTimeout(() => playSound("achievement"), ACHIEVEMENT_SOUND_DELAY);
+    window.setTimeout(() => playBossSpawnAnimation(result.nextBoss), 1180);
   } else {
     showBossDamagePop(result.damage);
   }
