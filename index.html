@@ -103,6 +103,37 @@
             <button class="daily-mission-action" type="button" data-open-guild hidden>ギルドへ行く</button>
           </section>
 
+          <section class="boss-card" data-boss-card aria-labelledby="boss-battle-title">
+            <div class="boss-head">
+              <div>
+                <p class="section-kicker">Boss Battle</p>
+                <h3 id="boss-battle-title">ボス戦</h3>
+              </div>
+              <strong data-boss-defeated-count>討伐 0体</strong>
+            </div>
+            <div class="boss-body">
+              <div class="boss-image-frame" aria-hidden="true">
+                <img data-boss-image alt="ボスの姿" hidden>
+                <span data-boss-fallback>魔</span>
+              </div>
+              <div class="boss-copy">
+                <h4 data-boss-name>スライムキング</h4>
+                <p>クエスト達成でダメージを与えよう。</p>
+                <div class="boss-hp-row">
+                  <span>HP</span>
+                  <strong data-boss-hp>50 / 50</strong>
+                </div>
+                <div class="boss-hp-track" aria-hidden="true">
+                  <span data-boss-hp-bar></span>
+                </div>
+                <div class="boss-meta">
+                  <span data-boss-attack>攻撃力 1</span>
+                  <span data-boss-reward>討伐報酬 XP +30 / Gold +20</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <div class="app-reminder-card" data-home-reminder>
             <span data-home-reminder-text>今日の任務を確認しましょう。</span>
           </div>
@@ -705,6 +736,7 @@
       <div class="achievement-toast" data-achievement-toast aria-live="polite"></div>
       <div class="clear-toast" data-clear-toast aria-live="polite"></div>
       <div class="daily-clear-toast" data-daily-clear-toast aria-live="polite"></div>
+      <div class="boss-toast" data-boss-toast aria-live="polite"></div>
       <div class="level-up-toast" data-level-up-toast aria-live="polite">レベルアップ！</div>
       <div class="evolution-toast" data-evolution-toast aria-live="polite"></div>
       <div class="evolution-modal" data-evolution-modal aria-live="polite" hidden>

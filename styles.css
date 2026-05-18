@@ -296,7 +296,8 @@ h3 {
 .quest-card,
 .record-row,
 .growth-panel,
-.future-form {
+.future-form,
+.boss-card {
   --surface-bg-image: var(--asset-card-background);
   position: relative;
   isolation: isolate;
@@ -326,6 +327,7 @@ h3 {
 .xp-panel::before,
 .streak-panel > div::before,
 .daily-mission-card::before,
+.boss-card::before,
 .reward-shop-empty::before,
 .reward-shop-item::before,
 .growth-summary-grid article::before,
@@ -357,6 +359,7 @@ h3 {
 .xp-panel > *,
 .streak-panel > div > *,
 .daily-mission-card > *,
+.boss-card > *,
 .reward-shop-empty > *,
 .reward-shop-item > *,
 .growth-summary-grid article > *,
@@ -376,6 +379,7 @@ h3 {
 .xp-panel,
 .streak-panel > div,
 .daily-mission-card,
+.boss-card,
 .reward-shop-empty,
 .reward-shop-item,
 .growth-summary-grid article,
@@ -1272,6 +1276,213 @@ h3 {
 
 .daily-mission-action[hidden] {
   display: none;
+}
+
+.boss-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  color: var(--muted);
+  transition: filter 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+}
+
+.boss-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.boss-head .section-kicker {
+  margin-bottom: 2px;
+  color: rgba(201, 154, 53, 0.9);
+  text-shadow: none;
+}
+
+.boss-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.boss-head strong {
+  flex: 0 0 auto;
+  min-height: 27px;
+  border: 1px solid rgba(201, 154, 53, 0.35);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--wood-dark);
+  background: rgba(255, 247, 223, 0.46);
+  font-size: 0.75rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.boss-body {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.boss-image-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid rgba(111, 63, 38, 0.24);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(241, 210, 122, 0.28), transparent 3rem),
+    linear-gradient(180deg, rgba(88, 52, 46, 0.16), rgba(255, 247, 223, 0.2));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 247, 223, 0.28),
+    0 10px 18px rgba(32, 18, 12, 0.16);
+}
+
+.boss-image-frame img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(32, 18, 12, 0.28));
+}
+
+.boss-image-frame span {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  color: #fff8e6;
+  background: linear-gradient(180deg, #7b3846, #412438);
+  box-shadow: 0 0 18px rgba(241, 210, 122, 0.24);
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.boss-image-frame [hidden] {
+  display: none;
+}
+
+.boss-copy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.boss-copy h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.05rem, 4.5vw, 1.32rem);
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.boss-copy p {
+  margin: 0;
+  color: rgba(111, 77, 59, 0.82);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.boss-hp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--wood-dark);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.boss-hp-row strong {
+  color: var(--navy);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.boss-hp-track {
+  height: 11px;
+  overflow: hidden;
+  border: 1px solid rgba(83, 48, 36, 0.26);
+  border-radius: 999px;
+  background: rgba(83, 65, 52, 0.18);
+  box-shadow: inset 0 2px 4px rgba(59, 33, 26, 0.2);
+}
+
+.boss-hp-track span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8f2d35, #c4493e 52%, #f1d27a);
+  box-shadow: 0 0 12px rgba(196, 73, 62, 0.26);
+  transition: width 460ms ease;
+}
+
+.boss-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.boss-meta span {
+  min-height: 24px;
+  border: 1px solid rgba(201, 154, 53, 0.28);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: var(--wood-dark);
+  background: rgba(255, 247, 223, 0.48);
+  font-size: 0.7rem;
+  font-weight: 950;
+}
+
+.boss-card.is-hit {
+  animation: bossCardHit 620ms ease both;
+}
+
+.boss-card.is-defeated {
+  animation: bossCardDefeated 1180ms ease both;
+}
+
+@keyframes bossCardHit {
+  0%,
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+
+  38% {
+    filter: brightness(1.09) saturate(1.08);
+    transform: scale(1.012);
+    box-shadow:
+      var(--paper-inner-shadow),
+      0 14px 28px rgba(32, 18, 12, 0.2),
+      0 0 18px rgba(196, 73, 62, 0.22);
+  }
+}
+
+@keyframes bossCardDefeated {
+  0%,
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+
+  32% {
+    filter: brightness(1.14) saturate(1.12);
+    transform: scale(1.018);
+    box-shadow:
+      var(--paper-inner-shadow),
+      0 16px 32px rgba(32, 18, 12, 0.24),
+      0 0 26px rgba(241, 210, 122, 0.38);
+  }
 }
 
 .app-reminder-card {
@@ -3206,6 +3417,7 @@ h3 {
 .level-up-toast,
 .clear-toast,
 .daily-clear-toast,
+.boss-toast,
 .evolution-toast,
 .reward-toast,
 .app-reminder-toast,
@@ -3241,6 +3453,7 @@ h3 {
 .level-up-toast,
 .clear-toast,
 .daily-clear-toast,
+.boss-toast,
 .evolution-toast {
   padding: 12px 18px;
   font-size: 1rem;
@@ -3259,6 +3472,30 @@ h3 {
     0 0 26px rgba(241, 210, 122, 0.54);
 }
 
+.boss-toast {
+  border-color: rgba(255, 232, 143, 0.72);
+  color: #fff8e6;
+  background:
+    radial-gradient(circle at 18% 28%, rgba(255, 232, 143, 0.28), transparent 0.55rem),
+    linear-gradient(180deg, rgba(255, 247, 223, 0.12), transparent 42%),
+    linear-gradient(180deg, #7b3846, #542632 58%, #8f5d26);
+  box-shadow:
+    0 12px 28px rgba(48, 29, 20, 0.32),
+    0 0 22px rgba(196, 73, 62, 0.28);
+}
+
+.boss-toast.is-defeated {
+  color: var(--wood-dark);
+  background:
+    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.72), transparent 0.42rem),
+    radial-gradient(circle at 82% 30%, rgba(255, 255, 255, 0.58), transparent 0.34rem),
+    linear-gradient(180deg, rgba(255, 247, 223, 0.34), transparent 42%),
+    linear-gradient(180deg, #ffeaa3, #d8a83c 58%, #b97c28);
+  box-shadow:
+    0 12px 28px rgba(48, 29, 20, 0.32),
+    0 0 28px rgba(241, 210, 122, 0.54);
+}
+
 .reward-toast.is-challenge {
   color: var(--wood-dark);
   background:
@@ -3272,6 +3509,7 @@ h3 {
 .level-up-toast.is-visible,
 .clear-toast.is-visible,
 .daily-clear-toast.is-visible,
+.boss-toast.is-visible,
 .evolution-toast.is-visible,
 .reward-toast.is-visible,
 .app-reminder-toast.is-visible,

@@ -10,6 +10,7 @@ const ONBOARDING_KEY = "hasSeenOnboarding";
 const LOGIN_BONUS_SETTINGS_KEY = "sora_guild_app_login_bonus_settings_dev";
 const DAILY_CLEAR_BONUS_SETTINGS_KEY = "sora_guild_app_daily_clear_bonus_settings_dev";
 const DAILY_CLEAR_BONUS_DATE_KEY = "sora_guild_app_daily_clear_bonus_date_dev";
+const BOSS_STATE_KEY = "sora_guild_app_boss_state_dev";
 const BGM_ENABLED_KEY = "sora_guild_app_bgm_enabled_dev";
 const BGM_SRC = "./assets/audio/bgm/bgm_main.mp3";
 const BGM_VOLUME = 0.3;
@@ -38,6 +39,13 @@ const DEFAULT_DAILY_CLEAR_BONUS_SETTINGS = {
   xp: 0,
   gold: 10,
 };
+const BOSS_DEFINITIONS = [
+  { id: "slime-king", name: "スライムキング", maxHp: 50, rewardXp: 30, rewardGold: 20 },
+  { id: "goblin-captain", name: "ゴブリン隊長", maxHp: 100, rewardXp: 60, rewardGold: 40 },
+  { id: "baby-dragon", name: "ドラゴンの子ども", maxHp: 200, rewardXp: 120, rewardGold: 80 },
+  { id: "ancient-guardian", name: "古代の守護者", maxHp: 400, rewardXp: 220, rewardGold: 140 },
+  { id: "dark-lord", name: "闇の魔王", maxHp: 800, rewardXp: 420, rewardGold: 260 },
+];
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 const EVERYDAY_SCHEDULE_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const STAT_KEYS = ["STR", "INT", "END", "DEX"];
@@ -86,6 +94,7 @@ const BACKUP_STORAGE_KEYS = [
   LOGIN_BONUS_SETTINGS_KEY,
   DAILY_CLEAR_BONUS_SETTINGS_KEY,
   DAILY_CLEAR_BONUS_DATE_KEY,
+  BOSS_STATE_KEY,
   BGM_ENABLED_KEY,
   SFX_ENABLED_KEY,
   CHARACTER_STAGE_KEY,
@@ -381,6 +390,7 @@ let unlockedAchievements = loadAchievements();
 let weeklyReportHistory = loadWeeklyReportHistory();
 let loginBonusSettings = loadLoginBonusSettings();
 let dailyClearBonusSettings = loadDailyClearBonusSettings();
+let bossState = loadBossState();
 progress = reconcileProgressFromHistory(progress);
 let rewardToastTimer;
 let clearToastTimer;
@@ -609,6 +619,50 @@ function loadDailyClearBonusSettings() {
 
 function saveDailyClearBonusSettings() {
   localStorage.setItem(DAILY_CLEAR_BONUS_SETTINGS_KEY, JSON.stringify(dailyClearBonusSettings));
+}
+
+function getBossInfo(defeatedCount = 0) {
+  const safeCount = Math.max(0, Math.floor(Number(defeatedCount) || 0));
+  const baseBoss = BOSS_DEFINITIONS[safeCount % BOSS_DEFINITIONS.length] || BOSS_DEFINITIONS[0];
+  const round = Math.floor(safeCount / BOSS_DEFINITIONS.length) + 1;
+
+  return {
+    ...baseBoss,
+    round,
+    level: safeCount + 1,
+    maxHp: baseBoss.maxHp * round,
+    rewardXp: baseBoss.rewardXp * round,
+    rewardGold: baseBoss.rewardGold * round,
+    image: `./assets/bosses/${baseBoss.id}.png`,
+  };
+}
+
+function normalizeBossState(rawState = {}) {
+  const defeatedCount = Math.max(0, Math.floor(Number(rawState.defeatedCount) || 0));
+  const boss = getBossInfo(defeatedCount);
+  const rawHp = Number(rawState.currentHp);
+  const boundedHp = Number.isFinite(rawHp)
+    ? Math.max(0, Math.min(boss.maxHp, Math.round(rawHp)))
+    : boss.maxHp;
+
+  return {
+    defeatedCount,
+    currentHp: boundedHp > 0 ? boundedHp : boss.maxHp,
+    lastDamage: normalizeNonNegativeNumber(rawState.lastDamage, 0),
+  };
+}
+
+function loadBossState() {
+  try {
+    const stored = localStorage.getItem(BOSS_STATE_KEY);
+    return normalizeBossState(stored ? JSON.parse(stored) : {});
+  } catch {
+    return normalizeBossState();
+  }
+}
+
+function saveBossState() {
+  localStorage.setItem(BOSS_STATE_KEY, JSON.stringify(bossState));
 }
 
 function loadAchievements() {
@@ -1598,6 +1652,62 @@ function formatBonusRewardText(xp, gold) {
     xp > 0 ? `XP +${xp}` : "",
     gold > 0 ? `Gold +${gold}` : "",
   ].filter(Boolean).join(" / ");
+}
+
+function getPlayerAttackDamage() {
+  return 1 + Math.floor(getLevel(progress.xp) / 2);
+}
+
+function applyBossQuestDamage(completedAt = new Date()) {
+  const boss = getBossInfo(bossState.defeatedCount);
+  const damage = Math.min(getPlayerAttackDamage(), Math.max(0, bossState.currentHp));
+  const nextHp = Math.max(0, bossState.currentHp - damage);
+
+  if (nextHp > 0) {
+    bossState = {
+      ...bossState,
+      currentHp: nextHp,
+      lastDamage: damage,
+    };
+    saveBossState();
+    return {
+      damaged: true,
+      defeated: false,
+      damage,
+      boss,
+      remainingHp: nextHp,
+    };
+  }
+
+  const previousLevel = getLevel(progress.xp);
+  const nextXp = progress.xp + boss.rewardXp;
+  const nextLevel = getLevel(nextXp);
+  progress = {
+    ...progress,
+    xp: nextXp,
+    gold: progress.gold + boss.rewardGold,
+    totalGoldEarned: Math.max(0, progress.totalGoldEarned || progress.gold || 0) + boss.rewardGold,
+    titleHistory: updateTitleHistory(progress.titleHistory, previousLevel, nextLevel, completedAt.toISOString()),
+  };
+
+  const defeatedCount = bossState.defeatedCount + 1;
+  const nextBoss = getBossInfo(defeatedCount);
+  bossState = normalizeBossState({
+    defeatedCount,
+    currentHp: nextBoss.maxHp,
+    lastDamage: damage,
+  });
+  saveBossState();
+
+  return {
+    damaged: true,
+    defeated: true,
+    damage,
+    boss,
+    rewardXp: boss.rewardXp,
+    rewardGold: boss.rewardGold,
+    nextBoss,
+  };
 }
 
 function applyDailyAdventureClearBonus(completedAt = new Date()) {
@@ -2956,6 +3066,7 @@ function completeQuest(questId, sourceElement) {
   };
 
   const dailyAdventureClearResult = applyDailyAdventureClearBonus(completedAt);
+  const bossBattleResult = applyBossQuestDamage(completedAt);
   const finalLevel = getLevel(progress.xp);
   const shouldPlayEvolution = finalLevel > previousLevel && syncCharacterStageState(finalLevel, { allowEvolution: true });
   if (shouldPlayEvolution) {
@@ -2972,6 +3083,7 @@ function completeQuest(questId, sourceElement) {
   showFloatingReward(quest, sourceRect);
   checkAchievements();
   showClearFeedback();
+  showBossBattleFeedback(bossBattleResult);
   if (dailyAdventureClearResult.cleared) {
     showDailyAdventureClearFeedback(dailyAdventureClearResult);
   }
@@ -4458,6 +4570,54 @@ function renderHomeDailyMission() {
   card.classList.toggle("is-empty", totalCount === 0);
 }
 
+function renderBossBattle() {
+  const card = document.querySelector("[data-boss-card]");
+  if (!card) {
+    return;
+  }
+
+  bossState = normalizeBossState(bossState);
+  const boss = getBossInfo(bossState.defeatedCount);
+  const hpPercent = boss.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((bossState.currentHp / boss.maxHp) * 100))) : 0;
+  const image = document.querySelector("[data-boss-image]");
+  const fallback = document.querySelector("[data-boss-fallback]");
+
+  setText("[data-boss-name]", boss.name);
+  setText("[data-boss-hp]", `${bossState.currentHp} / ${boss.maxHp}`);
+  setText("[data-boss-attack]", `攻撃力 ${getPlayerAttackDamage()}`);
+  setText("[data-boss-reward]", `討伐報酬 XP +${boss.rewardXp} / Gold +${boss.rewardGold}`);
+  setText("[data-boss-defeated-count]", `討伐 ${bossState.defeatedCount}体`);
+  const hpBar = document.querySelector("[data-boss-hp-bar]");
+  if (hpBar) {
+    hpBar.style.width = `${hpPercent}%`;
+  }
+
+  if (image) {
+    image.alt = `${boss.name}の姿`;
+    image.onerror = () => {
+      image.hidden = true;
+      if (fallback) {
+        fallback.hidden = false;
+        fallback.textContent = boss.name.slice(0, 1);
+      }
+    };
+    image.onload = () => {
+      image.hidden = false;
+      if (fallback) {
+        fallback.hidden = true;
+      }
+    };
+    if (image.dataset.bossSrc !== boss.image) {
+      image.dataset.bossSrc = boss.image;
+      image.hidden = false;
+      image.src = boss.image;
+      if (fallback) {
+        fallback.hidden = true;
+      }
+    }
+  }
+}
+
 function renderAppReminder() {
   const summary = getDailyRequiredQuestSummary();
   const reminder = document.querySelector("[data-home-reminder]");
@@ -4853,6 +5013,7 @@ function getToastTimerName(timerName) {
     achievement: "achievementToastTimer",
     clear: "clearToastTimer",
     dailyClear: "dailyClearToastTimer",
+    boss: "bossToastTimer",
     levelUp: "levelUpTimer",
     evolution: "evolutionTimer",
   }[timerName];
@@ -5051,6 +5212,42 @@ function showDailyAdventureClearFeedback(result) {
   enqueueToast(toast, {
     message: bonusText ? `今日の冒険クリア！ クリアボーナス ${bonusText}` : "今日の冒険クリア！",
     timerName: "dailyClear",
+  });
+}
+
+function playBossDamageAnimation(isDefeated = false) {
+  const card = document.querySelector("[data-boss-card]");
+  if (!card) {
+    return;
+  }
+
+  card.classList.remove("is-hit", "is-defeated");
+  void card.offsetWidth;
+  card.classList.add(isDefeated ? "is-defeated" : "is-hit");
+  window.setTimeout(() => card.classList.remove("is-hit", "is-defeated"), isDefeated ? 1180 : 620);
+}
+
+function showBossBattleFeedback(result) {
+  if (!result?.damaged) {
+    return;
+  }
+
+  const toast = document.querySelector("[data-boss-toast]");
+  const rewardText = result.defeated ? formatBonusRewardText(result.rewardXp || 0, result.rewardGold || 0) : "";
+  const message = result.defeated
+    ? `ボス討伐！ ${result.boss.name}を倒した！${rewardText ? ` ${rewardText}` : ""}`
+    : `${result.boss.name}に${result.damage}ダメージ！`;
+
+  playBossDamageAnimation(result.defeated);
+  if (result.defeated) {
+    window.setTimeout(() => playSound("achievement"), ACHIEVEMENT_SOUND_DELAY);
+  }
+  enqueueToast(toast, {
+    message,
+    duration: result.defeated ? 1900 : 1300,
+    timerName: "boss",
+    beforeShow: (element) => element.classList.toggle("is-defeated", result.defeated),
+    afterHide: (element) => element.classList.remove("is-defeated"),
   });
 }
 
@@ -5394,6 +5591,7 @@ function render() {
   renderCharacter(level);
   renderQuests();
   renderHomeDailyMission();
+  renderBossBattle();
   renderAppReminder();
   renderParentNote();
   renderTodayQuests();
